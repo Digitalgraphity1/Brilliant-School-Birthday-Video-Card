@@ -779,7 +779,6 @@ May you continue to shine bright 🌟 in your studies 📚 and achieve great suc
                 fps={30}
                 style={{ width: '100%', height: '100%' }}
                 controls
-                autoPlay
                 loop
               />
             </div>

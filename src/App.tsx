@@ -35,7 +35,7 @@ export default function App() {
   });
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 });
-  const [videoDuration, setVideoDuration] = useState(150); // Default 5 seconds at 30fps
+  const [videoDuration, setVideoDuration] = useState(439); // 14.63 seconds at 30fps
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const isBirthdayOnDate = (dob: string | undefined, targetDateStr: string) => {
@@ -122,27 +122,7 @@ export default function App() {
     }
   }, [isLoading, filteredStudents.length]);
 
-  useEffect(() => {
-    const getDuration = () => {
-      try {
-        const audio = new Audio('/birthday.mp3');
-        audio.addEventListener('loadedmetadata', () => {
-          console.log("App: Detected duration from Audio element:", audio.duration);
-          if (audio.duration && !isNaN(audio.duration)) {
-            setVideoDuration(Math.ceil(audio.duration * 30)); // Assuming 30fps
-          }
-        });
-        audio.addEventListener('error', (e) => {
-          console.error("App: Error loading audio:", e);
-          setVideoDuration(150);
-        });
-      } catch (e) {
-        console.error("App: Could not get audio duration:", e);
-        setVideoDuration(150); // Fallback to 5 seconds
-      }
-    };
-    getDuration();
-  }, []);
+
 
   const fetchStudents = () => {
     setIsLoading(true);

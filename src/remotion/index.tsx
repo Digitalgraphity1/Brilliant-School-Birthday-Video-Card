@@ -13,31 +13,7 @@ const RemotionRoot: React.FC = () => {
         fps={30}
         width={720}
         height={1280}
-        calculateMetadata={async ({ props }) => {
-          try {
-            let audioPath = staticFile('birthday.mp3');
-            
-            // If on server, try to use absolute path
-            if (typeof window === 'undefined') {
-              const path = await import('path');
-              audioPath = path.join(process.cwd(), 'public', 'birthday.mp3');
-            }
-            
-            console.log("Calculating duration for:", audioPath);
-            const duration = await getAudioDurationInSeconds(audioPath);
-            console.log("Detected duration:", duration);
-            return {
-              durationInFrames: Math.ceil(duration * 30),
-              props,
-            };
-          } catch (e) {
-            console.error("Could not get audio duration, falling back to 5 seconds:", e);
-            return {
-              durationInFrames: 150,
-              props,
-            };
-          }
-        }}
+        durationInFrames={439} // 14.63 seconds * 30 fps
         defaultProps={{
           studentName: 'Student'
         }}

@@ -33,10 +33,24 @@ async function startServer() {
   const bundleLocation = path.join(process.cwd(), "build");
   
   async function getBundle() {
-    if (fs.existsSync(bundleLocation)) return bundleLocation;
+    const ensureAudio = () => {
+      const audioSource = path.join(process.cwd(), "public", "birthday.mp3");
+      const audioDest = path.join(bundleLocation, "birthday.mp3");
+      if (fs.existsSync(audioSource) && !fs.existsSync(audioDest)) {
+        fs.copyFileSync(audioSource, audioDest);
+        console.log("Copied birthday.mp3 to build directory.");
+      }
+    };
+
+    if (fs.existsSync(bundleLocation)) {
+      ensureAudio();
+      return bundleLocation;
+    }
+    
     console.log("Bundling Remotion project...");
     try {
       await execAsync(`npx remotion bundle src/remotion/index.tsx`);
+      ensureAudio();
       return bundleLocation;
     } catch (e) {
       console.error("Failed to bundle:", e);

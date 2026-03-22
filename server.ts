@@ -36,7 +36,7 @@ async function startServer() {
     const ensureAudio = () => {
       const audioSource = path.join(process.cwd(), "public", "birthday.mp3");
       const audioDest = path.join(bundleLocation, "birthday.mp3");
-      if (fs.existsSync(audioSource) && !fs.existsSync(audioDest)) {
+      if (fs.existsSync(audioSource)) {
         fs.copyFileSync(audioSource, audioDest);
         console.log("Copied birthday.mp3 to build directory.");
       }
@@ -160,8 +160,7 @@ async function startServer() {
               "--disable-dev-shm-usage",
               "--disable-gpu",
               "--disable-software-rasterizer",
-              "--no-zygote",
-              "--single-process"
+              "--no-zygote"
             ],
           } as any,
         });

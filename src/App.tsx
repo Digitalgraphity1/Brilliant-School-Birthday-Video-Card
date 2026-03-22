@@ -780,6 +780,7 @@ May you continue to shine bright 🌟 in your studies 📚 and achieve great suc
                 style={{ width: '100%', height: '100%' }}
                 controls
                 loop
+                autoPlay={false}
               />
             </div>
             

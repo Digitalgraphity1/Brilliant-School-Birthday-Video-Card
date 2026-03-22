@@ -123,12 +123,21 @@ export default function App() {
   }, [isLoading, filteredStudents.length]);
 
   useEffect(() => {
-    const getDuration = async () => {
+    const getDuration = () => {
       try {
-        const duration = await getAudioDurationInSeconds(staticFile('birthday.mp3'));
-        setVideoDuration(Math.ceil(duration * 30)); // Assuming 30fps
+        const audio = new Audio('/birthday.mp3');
+        audio.addEventListener('loadedmetadata', () => {
+          console.log("App: Detected duration from Audio element:", audio.duration);
+          if (audio.duration && !isNaN(audio.duration)) {
+            setVideoDuration(Math.ceil(audio.duration * 30)); // Assuming 30fps
+          }
+        });
+        audio.addEventListener('error', (e) => {
+          console.error("App: Error loading audio:", e);
+          setVideoDuration(150);
+        });
       } catch (e) {
-        console.error("Could not get audio duration:", e);
+        console.error("App: Could not get audio duration:", e);
         setVideoDuration(150); // Fallback to 5 seconds
       }
     };
@@ -204,11 +213,10 @@ export default function App() {
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       
-      const CONCURRENCY_LIMIT = 3;
-      const students = [...filteredStudents];
-      let completedCount = 0;
-
-      const processStudent = async (student: any) => {
+      for (let i = 0; i < filteredStudents.length; i++) {
+        const student = filteredStudents[i];
+        setDownloadProgress({ current: i + 1, total: filteredStudents.length });
+        
         try {
           const response = await fetch('/api/render-video', {
             method: 'POST',
@@ -225,16 +233,7 @@ export default function App() {
           }
         } catch (err) {
           console.error(`Error rendering ${student.Name}:`, err);
-        } finally {
-          completedCount++;
-          setDownloadProgress({ current: completedCount, total: filteredStudents.length });
         }
-      };
-
-      // Run in chunks
-      for (let i = 0; i < students.length; i += CONCURRENCY_LIMIT) {
-        const chunk = students.slice(i, i + CONCURRENCY_LIMIT);
-        await Promise.all(chunk.map(student => processStudent(student)));
       }
       
       const content = await zip.generateAsync({ type: 'blob' });

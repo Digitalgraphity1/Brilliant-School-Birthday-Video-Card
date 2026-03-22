@@ -18,47 +18,37 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
   
-  const ffmpegPath = fs.existsSync("/usr/bin/ffmpeg") ? "/usr/bin/ffmpeg" : ffmpegInstaller.path;
+  const ffmpegPath = ffmpegInstaller.path;
   const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
-  const ffprobePath = fs.existsSync("/usr/bin/ffprobe") ? "/usr/bin/ffprobe" : ffprobeInstaller.path;
+  const ffprobePath = ffprobeInstaller.path;
+  
+  // Set these globally so Remotion can find them
+  process.env.FFMPEG_PATH = ffmpegPath;
+  process.env.FFPROBE_PATH = ffprobePath;
   
   console.log(`Using ffmpeg from: ${ffmpegPath}`);
   console.log(`Using ffprobe from: ${ffprobePath}`);
 
-  // Set environment variables for Remotion to find ffmpeg/ffprobe
-  process.env.REMOTION_FFMPEG_PATH = ffmpegPath;
-  process.env.REMOTION_FFPROBE_PATH = ffprobePath;
-
-  // Clear cached videos on start to ensure new duration is applied
-  try {
-    const publicDir = path.join(process.cwd(), "public");
-    if (fs.existsSync(publicDir)) {
-      const files = fs.readdirSync(publicDir);
-      for (const file of files) {
-        if (file.endsWith(".mp4")) {
-          fs.unlinkSync(path.join(publicDir, file));
-        }
-      }
-      console.log("Cleared cached videos.");
-    }
-  } catch (err) {
-    console.error("Error clearing cache:", err);
-  }
-
   // Pre-bundle Remotion on start
   const bundleLocation = path.join(process.cwd(), "build");
-  try {
-    console.log("Pre-bundling Remotion project...");
-    // Ensure build is clean
-    if (fs.existsSync(bundleLocation)) {
-      fs.rmSync(bundleLocation, { recursive: true, force: true });
+  
+  async function getBundle() {
+    if (fs.existsSync(bundleLocation)) return bundleLocation;
+    console.log("Bundling Remotion project...");
+    try {
+      await execAsync(`npx remotion bundle src/remotion/index.tsx`);
+      return bundleLocation;
+    } catch (e) {
+      console.error("Failed to bundle:", e);
+      throw e;
     }
-    // npx remotion bundle defaults to 'build'
-    await execAsync(`npx remotion bundle src/remotion/index.tsx build --public-dir=public`);
-    console.log("Remotion bundled successfully at " + bundleLocation);
+  }
+
+  try {
+    await getBundle();
+    console.log("Initial bundle created successfully.");
   } catch (bundleErr) {
-    console.error("Error pre-bundling Remotion:", bundleErr);
-    // Don't crash the server, but log it
+    console.error("Error during initial bundle:", bundleErr);
   }
 
   // API routes
@@ -113,57 +103,56 @@ async function startServer() {
     }
 
     try {
-      const bundleLocation = path.join(process.cwd(), "build");
+      const currentBundle = await getBundle();
+      const publicDir = path.join(process.cwd(), "public");
       
-      // Ensure bundle exists
-      if (!fs.existsSync(bundleLocation)) {
-        console.log("Bundle missing, creating now...");
-        await execAsync(`npx remotion bundle src/remotion/index.tsx build --public-dir=public`);
-      }
-
-      const outputDir = path.join(process.cwd(), "public");
+      const outputDir = path.join(process.cwd(), "public", "renders");
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
       const safeStudentName = studentName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const outputLocation = path.join(outputDir, `${safeStudentName}_birthday.mp4`);
+      const outputLocation = path.join(outputDir, `${safeStudentName}_birthday_${Date.now()}.mp4`);
       
-      // Check if video already exists (cache)
-      if (fs.existsSync(outputLocation)) {
-        console.log(`Serving cached video for ${studentName}`);
-        return res.download(outputLocation, `${safeStudentName}_Birthday.mp4`);
-      }
-
-      console.log(`Starting render for ${studentName}...`);
+      console.log(`Starting optimized render for ${studentName}...`);
+      const startTime = Date.now();
       
-      // Get audio duration using ffprobe
-      let durationInFrames = 30 * 24; // Default 30s
       try {
-        const audioPath = path.join(process.cwd(), "public", "birthday.mp3");
-        if (fs.existsSync(audioPath)) {
-          const ffprobeCmd = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`;
-          const { stdout } = await execAsync(ffprobeCmd);
-          const duration = parseFloat(stdout);
-          if (!isNaN(duration)) {
-            durationInFrames = Math.ceil(duration * 24);
-            console.log(`Calculated duration from ffprobe: ${duration}s (${durationInFrames} frames)`);
-          }
-        }
-      } catch (durationErr) {
-        console.error("Error getting duration with ffprobe:", durationErr);
-      }
-
-      try {
-        // Use npx remotion render with optimized settings
-        const props = JSON.stringify({ studentName, durationInFrames });
-        const renderCommand = `npx remotion render "${bundleLocation}" BirthdayVideo "${outputLocation}" --props='${props}' --browser-flags="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage" --concurrency=4 --quiet --ffmpeg-executable="${ffmpegPath}" --ffprobe-executable="${ffprobePath}" --public-dir=public`;
+        // Use @remotion/renderer API directly for better performance
+        const compositions = await renderer.getCompositions(currentBundle, {
+          inputProps: { studentName },
+        });
         
-        console.log(`Executing: ${renderCommand}`);
-        await execAsync(renderCommand);
-        console.log(`Render complete: ${outputLocation}`);
+        const composition = compositions.find((c) => c.id === "BirthdayVideo");
+        if (!composition) {
+          throw new Error("Composition BirthdayVideo not found");
+        }
+
+        console.log(`Rendering composition: ${composition.id} with duration: ${composition.durationInFrames} frames`);
+
+        await renderer.renderMedia({
+          composition,
+          serveUrl: currentBundle,
+          codec: "h264",
+          outputLocation,
+          inputProps: { studentName },
+          chromiumOptions: {
+            args: [
+              "--no-sandbox", 
+              "--disable-setuid-sandbox", 
+              "--disable-dev-shm-usage",
+              "--disable-gpu",
+              "--disable-software-rasterizer",
+              "--no-zygote",
+              "--single-process"
+            ],
+          } as any,
+        });
+        
+        const endTime = Date.now();
+        console.log(`Render complete in ${((endTime - startTime) / 1000).toFixed(2)}s: ${outputLocation}`);
       } catch (renderErr) {
-        console.error("Error during npx remotion render:", renderErr);
+        console.error("Error during @remotion/renderer renderMedia:", renderErr);
         throw new Error(`Rendering failed: ${renderErr instanceof Error ? renderErr.message : String(renderErr)}`);
       }
 
@@ -179,7 +168,15 @@ async function startServer() {
             res.status(500).send("Error downloading file");
           }
         }
-        // Cache is enabled, we don't delete the file here.
+        // डाउनलोड के बाद फाइल डिलीट कर दें ताकि सर्वर भर न जाए
+        if (fs.existsSync(outputLocation)) {
+          try {
+            fs.unlinkSync(outputLocation);
+            console.log(`Deleted temporary file: ${outputLocation}`);
+          } catch (unlinkErr) {
+            console.error("Error deleting file:", unlinkErr);
+          }
+        }
       });
     } catch (error) {
       console.error("Error in render-video endpoint:", error);

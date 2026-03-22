@@ -112,9 +112,9 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
 
   const confetti = useMemo(() => {
     const colors = ['#fde047', '#ef4444', '#3b82f6', '#10b981', '#a855f7', '#f97316'];
-    return Array.from({ length: 30 }).map((_, i) => ({
+    return Array.from({ length: 40 }).map((_, i) => ({
       x: Math.random() * width,
-      size: 6 + Math.random() * 6,
+      size: 8 + Math.random() * 8,
       color: colors[i % colors.length],
       rotation: Math.random() * 360,
       delay: Math.random() * 180,
@@ -160,7 +160,7 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
       
       <div style={{
         position: 'absolute',
-        top: '780px',
+        top: '1180px',
         left: 0,
         right: 0,
         display: 'flex',
@@ -169,17 +169,18 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
         zIndex: 100,
       }}>
         <div style={{
-          fontSize: '64px',
+          fontSize: '60px',
           fontWeight: 900,
-          color: '#fde047',
+          color: '#FFFFFF',
           textAlign: 'center',
-          fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+          fontFamily: "'Fredoka', sans-serif",
           opacity,
           transform: `translate3d(0, ${bounce}px, 0) scale(${scale})`,
-          textShadow: '0 4px 20px rgba(0, 0, 0, 0.8)',
-          maxWidth: '90%',
-          lineHeight: 1.1,
-          letterSpacing: '1px',
+          textShadow: '0 4px 16px rgba(0, 0, 0, 0.6)',
+          maxWidth: '95%',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.2,
+          padding: '20px',
           willChange: 'transform, opacity',
         }}>
           {safeName}

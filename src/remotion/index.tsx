@@ -11,8 +11,8 @@ const RemotionRoot: React.FC = () => {
         id="BirthdayVideo"
         component={BirthdayVideo}
         fps={30}
-        width={1080}
-        height={1920}
+        width={720}
+        height={1280}
         calculateMetadata={async ({ props }) => {
           try {
             let audioPath = staticFile('birthday.mp3');

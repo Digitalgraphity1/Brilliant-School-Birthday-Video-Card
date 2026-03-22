@@ -160,7 +160,7 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
       
       <div style={{
         position: 'absolute',
-        top: '1180px',
+        top: `${height * 0.61}px`, // 1180 / 1920 is roughly 0.61
         left: 0,
         right: 0,
         display: 'flex',
@@ -169,7 +169,7 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
         zIndex: 100,
       }}>
         <div style={{
-          fontSize: '60px',
+          fontSize: `${width * 0.055}px`, // 60 / 1080 is roughly 0.055
           fontWeight: 900,
           color: '#FFFFFF',
           textAlign: 'center',

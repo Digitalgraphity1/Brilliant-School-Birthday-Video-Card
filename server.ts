@@ -136,6 +136,9 @@ async function startServer() {
           codec: "h264",
           outputLocation,
           inputProps: { studentName },
+          concurrency: 1, // Prevent OOM on Railway
+          imageFormat: "jpeg", // Save memory
+          jpegQuality: 80,
           chromiumOptions: {
             args: [
               "--no-sandbox", 

@@ -1,6 +1,9 @@
 # Use a standard Node.js image
 FROM node:20-bookworm
 
+# Set production environment
+ENV NODE_ENV=production
+
 # Install dependencies for Chrome and FFmpeg
 RUN apt-get update && apt-get install -y \
     ffmpeg \

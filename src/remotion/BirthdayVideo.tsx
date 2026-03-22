@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { AbsoluteFill, Img, interpolate, useCurrentFrame, useVideoConfig, Audio, staticFile, spring } from 'remotion';
+import audioSrc from '../../public/birthday.mp3';
 
 const ConfettiPiece: React.FC<{
   x: number;
@@ -142,7 +143,7 @@ export const BirthdayVideo: React.FC<{ studentName?: string }> = ({ studentName 
 
   return (
     <AbsoluteFill style={{ backgroundColor: '#0a3d54', overflow: 'hidden' }}>
-      <Audio src={staticFile("birthday.mp3")} volume={0.5} />
+      <Audio src={audioSrc} volume={1} />
 
       <Img 
         src="https://i.postimg.cc/90ZYL8B1/Gemini_Generated_Image_4gcrp4gcrp4gcrp4.png" 

@@ -18,12 +18,32 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
   
-  const ffmpegPath = ffmpegInstaller.path;
+  const ffmpegPath = fs.existsSync("/usr/bin/ffmpeg") ? "/usr/bin/ffmpeg" : ffmpegInstaller.path;
   const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
-  const ffprobePath = ffprobeInstaller.path;
+  const ffprobePath = fs.existsSync("/usr/bin/ffprobe") ? "/usr/bin/ffprobe" : ffprobeInstaller.path;
   
   console.log(`Using ffmpeg from: ${ffmpegPath}`);
   console.log(`Using ffprobe from: ${ffprobePath}`);
+
+  // Set environment variables for Remotion to find ffmpeg/ffprobe
+  process.env.REMOTION_FFMPEG_PATH = ffmpegPath;
+  process.env.REMOTION_FFPROBE_PATH = ffprobePath;
+
+  // Clear cached videos on start to ensure new duration is applied
+  try {
+    const publicDir = path.join(process.cwd(), "public");
+    if (fs.existsSync(publicDir)) {
+      const files = fs.readdirSync(publicDir);
+      for (const file of files) {
+        if (file.endsWith(".mp4")) {
+          fs.unlinkSync(path.join(publicDir, file));
+        }
+      }
+      console.log("Cleared cached videos.");
+    }
+  } catch (err) {
+    console.error("Error clearing cache:", err);
+  }
 
   // Pre-bundle Remotion on start
   const bundleLocation = path.join(process.cwd(), "build");
@@ -34,7 +54,7 @@ async function startServer() {
       fs.rmSync(bundleLocation, { recursive: true, force: true });
     }
     // npx remotion bundle defaults to 'build'
-    await execAsync(`npx remotion bundle src/remotion/index.tsx`);
+    await execAsync(`npx remotion bundle src/remotion/index.tsx build --public-dir=public`);
     console.log("Remotion bundled successfully at " + bundleLocation);
   } catch (bundleErr) {
     console.error("Error pre-bundling Remotion:", bundleErr);
@@ -98,7 +118,7 @@ async function startServer() {
       // Ensure bundle exists
       if (!fs.existsSync(bundleLocation)) {
         console.log("Bundle missing, creating now...");
-        await execAsync(`npx remotion bundle src/remotion/index.tsx`);
+        await execAsync(`npx remotion bundle src/remotion/index.tsx build --public-dir=public`);
       }
 
       const outputDir = path.join(process.cwd(), "public");
@@ -117,10 +137,27 @@ async function startServer() {
 
       console.log(`Starting render for ${studentName}...`);
       
+      // Get audio duration using ffprobe
+      let durationInFrames = 30 * 24; // Default 30s
+      try {
+        const audioPath = path.join(process.cwd(), "public", "birthday.mp3");
+        if (fs.existsSync(audioPath)) {
+          const ffprobeCmd = `"${ffprobePath}" -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`;
+          const { stdout } = await execAsync(ffprobeCmd);
+          const duration = parseFloat(stdout);
+          if (!isNaN(duration)) {
+            durationInFrames = Math.ceil(duration * 24);
+            console.log(`Calculated duration from ffprobe: ${duration}s (${durationInFrames} frames)`);
+          }
+        }
+      } catch (durationErr) {
+        console.error("Error getting duration with ffprobe:", durationErr);
+      }
+
       try {
         // Use npx remotion render with optimized settings
-        const props = JSON.stringify({ studentName });
-        const renderCommand = `npx remotion render "${bundleLocation}" BirthdayVideo "${outputLocation}" --props='${props}' --browser-flags="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage" --concurrency=4 --quiet`;
+        const props = JSON.stringify({ studentName, durationInFrames });
+        const renderCommand = `npx remotion render "${bundleLocation}" BirthdayVideo "${outputLocation}" --props='${props}' --browser-flags="--no-sandbox --disable-setuid-sandbox --disable-dev-shm-usage" --concurrency=4 --quiet --ffmpeg-executable="${ffmpegPath}" --ffprobe-executable="${ffprobePath}" --public-dir=public`;
         
         console.log(`Executing: ${renderCommand}`);
         await execAsync(renderCommand);

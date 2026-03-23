@@ -40,30 +40,25 @@ export default function App() {
 
   const isBirthdayOnDate = (dob: string | undefined, targetDateStr: string) => {
     if (!dob) return false;
+    // Normalize to YYYY-MM-DD or DD-MM-YYYY
     const normalizedDOB = dob.trim().replace(/\//g, '-');
     const parts = normalizedDOB.split('-');
     if (parts.length !== 3) return false;
 
     let stuDay, stuMonth;
+    
+    // Check if YYYY-MM-DD
     if (parts[0].length === 4) {
       stuDay = parts[2];
       stuMonth = parts[1];
     } else {
-      const p0 = parseInt(parts[0], 10);
-      const p1 = parseInt(parts[1], 10);
-      if (p0 > 12) {
-        stuDay = parts[0];
-        stuMonth = parts[1];
-      } else if (p1 > 12) {
-        stuDay = parts[1];
-        stuMonth = parts[0];
-      } else {
-        stuDay = parts[0];
-        stuMonth = parts[1];
-      }
+      // Assume DD-MM-YYYY
+      stuDay = parts[0];
+      stuMonth = parts[1];
     }
 
     const [tYear, tMonth, tDay] = targetDateStr.split('-');
+    // targetDateStr is YYYY-MM-DD
     return parseInt(stuDay, 10) === parseInt(tDay, 10) && 
            parseInt(stuMonth, 10) === parseInt(tMonth, 10);
   };
